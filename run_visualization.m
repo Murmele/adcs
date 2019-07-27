@@ -20,7 +20,7 @@ rate_gyro_bias_instability_deg_p_s = 0.003; % [deg/s]
 rate_gyro_bias_instability_time = 200; % [s]
 rate_gyro_bias_random_walk_white_noise = (rate_gyro_bias_instability_deg_p_s/sqrt(rate_gyro_bias_instability_time))/180*pi; % [rad/s^2/sqrt(Hz)]
 
-filter_model = 'mekf_cst_mom' % one of 'mekf_cst_mom', 'mekf_gyro', 'basic'
+filter_model = 'mekf_gyro' % one of 'mekf_cst_mom', 'mekf_gyro', 'basic'
 
 sim = Simulation3DBody(filter_model, ...
                        delta_t, ...

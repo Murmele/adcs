@@ -75,10 +75,10 @@ classdef Simulation3DBody < handle
             gyro = gyro + self.gyro_bias;
             self.gyro_bias = self.gyro_bias + randn(3, 1) * self.rate_gyro_bias_white_noise * sqrt(1/self.delta_t);
 
-            self.kalman.predict(gyro);
-            z1 = self.body.measureVector([0; 0; 1], self.measurement_noise_stddev);
+            self.kalman.predict(gyro); % prediction
+            z1 = self.body.measureVector([0; 0; 1], self.measurement_noise_stddev); % es werden keine Beschleunigungssensoren verwendet
             z2 = self.body.measureVector([0; 1; 0], self.measurement_noise_stddev);
-            self.kalman.measure(z1, z2);
+            self.kalman.measure(z1, z2); % measurement and reset when mekf
             self.inspect_z1 = z1;
             self.inspect_z2 = z2;
         end

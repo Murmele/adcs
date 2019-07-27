@@ -18,7 +18,7 @@ classdef MEKF3DGyro < handle
             obj.Q = Q;
             obj.R = R;
             MEKF3DGyroSymbolicDerivation
-            F__ = matlabFunction(F, 'Vars', {b_hat, w_g});
+            F__ = matlabFunction(F, 'Vars', {b_hat, w_g}); % convert symbolic function to function handler
             obj.F = @(x_, gyro) F__(x_(4:6), gyro);
             % h_ = matlabFunction(subs(h, dt, delta_t), 'Vars', x);
             % h_ = @(x_) h__(x_(1), x_(2), x_(3), x_(4), x_(5), x_(6), x_(7));
@@ -28,55 +28,57 @@ classdef MEKF3DGyro < handle
             obj.K = ExtendedKalmanFilter(6);
             obj.delta_t = delta_t;
             obj.last_gyro = zeros(3,1);
-            obj.q_ref = [1; 0; 0; 0];
+            obj.q_ref = [1; 0; 0; 0]; % initial rotation
         end
 
         function attitude_error_transfer_to_reference(self)
             delta_q_of_a = [2; self.K.x(1); self.K.x(2); self.K.x(3)]; % unnormalized
             self.q_ref = quatmult(self.q_ref, delta_q_of_a);
             self.q_ref = self.q_ref / norm(self.q_ref); % normalize after multiplication
-            self.K.x(1:3) = zeros(3, 1);
+            self.K.x(1:3) = zeros(3, 1); % reset nur von alpha
         end
 
         function predict(self, gyro)
             % propagate reference
-            omega = gyro - self.K.x(4:6);
+            omega = gyro - self.K.x(4:6); % omega_hat
             ang = norm(omega) * self.delta_t;
             if ang > 0.000001
                 axis = omega / norm(omega);
-                delta_q_ref = [cos(ang/2); axis*sin(ang/2)];
+                delta_q_ref = [cos(ang/2); axis*sin(ang/2)];  % where this eq. come from?
             else
                 delta_q_ref = [1; omega*self.delta_t/2];
             end
             self.q_ref = quatmult(self.q_ref, delta_q_ref);
 
             F = self.F(self.K.x, gyro);
-            A = [        -F, self.G*self.Q*self.G';
+            A = [        -F, self.G*self.Q*self.G'; % in barton wurde nur Q verwendet, da dort immer additives Rauschen war und kein negatives
                  zeros(6,6),     F'];
             B = expm(A*self.delta_t);
             Phi = B(7:12, 7:12)';
             Qs = Phi * B(1:6, 7:12);
 
-            f = @(x) x;
+            f = @(x) x; % wieso ist x_k_k1 = x_k1 ?
             self.K.predict(f, Phi, Qs);
-            self.inspect_Phi = Phi;
+            self.inspect_Phi = Phi; % debugging
             self.last_gyro = gyro;
         end
 
         function measure_vect(self, expected_i, measured_b, R)
             expected_i = expected_i / norm(expected_i);
             measured_b = measured_b / norm(measured_b);
-            i_to_m = quat_from_two_vect(expected_i, [1; 0; 0]);
+            i_to_m = quat_from_two_vect(expected_i, [1; 0; 0]); % ???
             b_to_m = quatmult(i_to_m, self.q_ref);
             b_to_m = rotation_matrix_from_quat(b_to_m);
             expected_b = rotate_by_quaternion(expected_i, quatconj(self.q_ref));
             Proj = [0, 1, 0;
                     0, 0, 1];
             %z = Proj * b_to_m * measured_b; % simple linear measurement
-            m = b_to_m * measured_b + [1; 0; 0];
+            m = b_to_m * measured_b + [1; 0; 0]; % difference
             m = m / norm(m);
+            % wieso wird mit zwei multipliziert?
             z = m(2:3) / m(1) * 2; % improved nonlinear measurement
 
+            % ?????????
             h = @(x) [0; 0]; % expected measurement is zero
             Ha = Proj * b_to_m * cross_prod_matrix(expected_b);
             H = [Ha, zeros(2, 3)];
@@ -85,8 +87,8 @@ classdef MEKF3DGyro < handle
 
 
         function measure(self, E1, E2)
-            self.measure_vect([0; 0; 1], E1, self.R)
-            self.measure_vect([0; 1; 0], E2, self.R)
+            self.measure_vect([0; 0; 1], E1, self.R) % execute 2 times kalman filter measure % acceleration
+            self.measure_vect([0; 1; 0], E2, self.R) % ... % magnetometer
             self.attitude_error_transfer_to_reference()
         end
 

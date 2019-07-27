@@ -30,7 +30,7 @@ q_ref = [q1; q2; q3; q4];
 % a factor of two. A Gibbs-vector is defined as the normalized rotation axis
 % scaled by the tangent of half the rotation angle ( g = n*tan(theta/2) )
 % therefore g = [q2; q3; q4] / q1
-% and a = 2 * [q2; q3; q4] / q1
+% and a = 2 * [q2; q3; q4] / q1 % Eq. 35 in Markley2003
 % or q = 1/sqrt(4 + norm(a)^2) * [2; a1; a2; a3]
 syms a1 a2 a3 real
 a = [a1; a2; a3]
@@ -39,8 +39,8 @@ dqr = delta_q(1)
 dqv = delta_q(2:4)
 
 delta_q_dot = 1/2 * quatmult(delta_q, [0; w]) ...
-              -1/2 * quatmult([0; w_hat], delta_q);
-a_dot = 2*(delta_q_dot(2:4)/delta_q(1) - delta_q(2:4)*delta_q_dot(1)/delta_q(1)^2);
+              -1/2 * quatmult([0; w_hat], delta_q); % Eq. 31
+a_dot = 2*(delta_q_dot(2:4)/delta_q(1) - delta_q(2:4)*delta_q_dot(1)/delta_q(1)^2); % woher kommt diese Gleichung?
 
 
 % the filter estimates attitude reference error & gyro bias
@@ -49,9 +49,9 @@ x = [a1; a2; a3; b1; b2; b3];
 f = [a_dot; n_bg];
 
 F = jacobian(f, x);
-F = subs(F, [b; n_g; n_bg; a], [b_hat; zeros(3,1); zeros(3,1); zeros(3,1)])
+F = subs(F, [b; n_g; n_bg; a], [b_hat; zeros(3,1); zeros(3,1); zeros(3,1)]) % mean of a gaussian noise is zero. mean of bias b is b_hat (Markley2003 eq. 43)
 G = jacobian(f, [n_g; n_bg]);
-G = subs(G, [b; n_g; n_bg; a], [b_hat; zeros(3,1); zeros(3,1); zeros(3,1)])
+G = subs(G, [b; n_g; n_bg; a], [b_hat; zeros(3,1); zeros(3,1); zeros(3,1)]) % mean of a gaussian noise is zero. mean of bias b is b_hat (Markley2003 eq. 43)
 Q = diag([n_g; n_bg])
 
 
